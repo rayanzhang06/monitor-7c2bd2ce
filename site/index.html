@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="referrer" content="no-referrer">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>策略监控工作台 · T+1</title>
+  <style>
+    :root {
+      --canvas: #f4f6f2; --surface: #fff; --soft: #f8faf7; --ink: #17221d;
+      --muted: #67736c; --quiet: #8a948e; --line: #dfe5df; --green: #176b52;
+      --blue: #39758c; --amber: #a9661f; --red: #a4453c; --red-soft: #f8e9e7;
+      --shadow: 0 18px 55px rgba(29,48,39,.07); --radius: 20px;
+      --sans: "Avenir Next", "PingFang SC", "Hiragino Sans GB", -apple-system, BlinkMacSystemFont, sans-serif;
+      --mono: "SFMono-Regular", "Cascadia Code", Menlo, monospace; color-scheme: light;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; min-width: 320px; color: var(--ink); background: var(--canvas); font: 15px/1.55 var(--sans); -webkit-font-smoothing: antialiased; }
+    button, summary { font: inherit; }
+    button:focus-visible, summary:focus-visible { outline: 3px solid rgba(23,107,82,.22); outline-offset: 3px; }
+    .page { width: min(1240px, calc(100% - 48px)); margin: 0 auto; padding: 34px 0 56px; }
+    .masthead { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 28px; align-items: end; margin-bottom: 24px; }
+    .kicker { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; color: var(--green); font-size: 11px; font-weight: 750; letter-spacing: .14em; text-transform: uppercase; }
+    .kicker::before { content: ""; width: 24px; height: 2px; background: currentColor; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 7px; font-size: clamp(34px,4.8vw,58px); font-weight: 650; line-height: 1.02; letter-spacing: -.055em; }
+    .subtitle { max-width: 670px; margin-bottom: 0; color: var(--muted); font-size: 14px; }
+    .freshness { min-width: 292px; padding: 13px 15px 14px; border: 1px solid var(--line); border-radius: 15px; background: rgba(255,255,255,.62); text-align: right; }
+    .freshness-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 5px; }
+    .freshness-line { display: flex; justify-content: flex-end; align-items: center; gap: 8px; color: var(--green); font-size: 11px; font-weight: 750; letter-spacing: .08em; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 5px rgba(23,107,82,.1); }
+    .freshness strong { display: block; font-size: 21px; font-weight: 650; letter-spacing: -.02em; }
+    .freshness small { color: var(--muted); }
+    .refresh-button { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; gap: 6px; padding: 7px 10px; border: 1px solid rgba(23,107,82,.24); border-radius: 10px; color: var(--green); background: rgba(255,255,255,.88); cursor: pointer; font-size: 12px; font-weight: 700; line-height: 1; transition: border-color .18s ease, background .18s ease, color .18s ease, transform .18s ease; }
+    .refresh-button:hover { border-color: rgba(23,107,82,.42); background: #fff; transform: translateY(-1px); }
+    .refresh-button:disabled { cursor: wait; opacity: .72; transform: none; }
+    .refresh-button.is-success { border-color: rgba(23,107,82,.36); background: #edf7f2; }
+    .refresh-button.is-error { border-color: rgba(164,69,60,.3); color: var(--red); background: var(--red-soft); }
+    .refresh-icon { width: 14px; height: 14px; flex: 0 0 auto; }
+    .refresh-button.is-loading .refresh-icon { animation: refresh-spin .8s linear infinite; }
+    .refresh-feedback { display: block; min-height: 1.35em; margin-top: 4px; }
+    @keyframes refresh-spin { to { transform: rotate(360deg); } }
+    .fatal { margin-bottom: 18px; padding: 15px 17px; border: 1px solid #e8bcb7; border-radius: 14px; color: var(--red); background: var(--red-soft); }
+    .decision-strip { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(310px,.72fr); overflow: hidden; margin-bottom: 16px; border: 1px solid #164f3e; border-radius: var(--radius); color: #f4faf6; background: #164f3e; box-shadow: var(--shadow); }
+    .decision-main { padding: 24px 26px; }
+    .eyebrow { margin-bottom: 8px; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .14em; text-transform: uppercase; }
+    .decision-main .eyebrow { color: rgba(244,250,246,.62); }
+    .decision-main h2 { margin-bottom: 8px; font-size: clamp(25px,3vw,38px); font-weight: 620; line-height: 1.12; letter-spacing: -.035em; }
+    .decision-main p { max-width: 680px; margin-bottom: 0; color: rgba(244,250,246,.72); font-size: 13px; }
+    .account-chip { display: inline-flex; align-items: center; margin: 2px 0 10px; padding: 5px 9px; border: 1px solid rgba(255,255,255,.22); border-radius: 999px; color: #fff4d9; background: rgba(255,255,255,.08); font-size: 10px; font-weight: 700; letter-spacing: .04em; }
+    .decision-side { display: grid; grid-template-columns: 1fr 1fr; border-left: 1px solid rgba(255,255,255,.13); background: rgba(255,255,255,.04); }
+    .decision-stat { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 20px; }
+    .decision-stat + .decision-stat { border-left: 1px solid rgba(255,255,255,.13); }
+    .decision-stat span { margin-bottom: 4px; color: rgba(244,250,246,.58); font-size: 10px; letter-spacing: .1em; }
+    .decision-stat strong { font-size: 24px; font-weight: 650; letter-spacing: -.035em; }
+    .decision-stat small { overflow: hidden; color: rgba(244,250,246,.68); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .panel { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .panel-head { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; padding: 21px 22px 0; }
+    .panel-head h2 { margin-bottom: 4px; font-size: 18px; font-weight: 680; letter-spacing: -.025em; }
+    .panel-head p { margin-bottom: 0; color: var(--muted); font-size: 12px; }
+    .panel-head code { font-family: var(--mono); color: var(--quiet); font-size: 10px; }
+    .horizon-tabs { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); }
+    .horizon-tabs button { min-width: 48px; padding: 6px 9px; border: 0; border-radius: 7px; color: var(--muted); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; }
+    .horizon-tabs button.active { color: var(--green); background: var(--surface); box-shadow: 0 1px 4px rgba(22,56,43,.1); }
+    .performance-panel { margin-bottom: 16px; }
+    .metric-row { display: grid; grid-template-columns: repeat(4,1fr); margin: 20px 22px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .metric { min-width: 0; padding: 14px 16px; }
+    .metric:first-child { padding-left: 0; }
+    .metric + .metric { border-left: 1px solid var(--line); }
+    .metric span { display: block; margin-bottom: 2px; color: var(--muted); font-size: 10px; letter-spacing: .08em; }
+    .metric strong { display: block; font-size: 25px; font-weight: 650; line-height: 1.2; letter-spacing: -.035em; }
+    .metric small { display: block; overflow: hidden; margin-top: 3px; color: var(--quiet); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .metric .negative { color: var(--red); }
+    .chart-wrap { min-width: 0; padding: 16px 18px 14px; }
+    .chart-wrap svg { display: block; width: 100%; max-width: 100%; height: auto; overflow: visible; }
+    .chart-legend { display: flex; gap: 18px; align-items: center; padding: 0 4px 4px; color: var(--muted); font-size: 10px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-line { width: 18px; height: 2px; background: var(--green); }
+    .legend-area { width: 18px; height: 8px; border-radius: 2px; background: rgba(164,69,60,.18); }
+    .series-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 22px 0; }
+    .series-controls-label { margin-right: 2px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .06em; }
+    .asset-toggles { display: flex; flex-wrap: wrap; gap: 6px; }
+    .series-toggle { display: inline-flex; gap: 6px; align-items: center; padding: 5px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--soft); cursor: pointer; font-size: 10px; font-weight: 650; }
+    .series-toggle:hover { border-color: var(--quiet); }
+    .series-toggle.active { border-color: var(--series-color); color: var(--series-color); background: var(--surface); box-shadow: 0 1px 4px rgba(22,56,43,.09); }
+    .series-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--series-color); opacity: .58; }
+    .series-toggle.active .series-dot { opacity: 1; box-shadow: 0 0 0 3px color-mix(in srgb, var(--series-color) 13%, transparent); }
+    .series-hint { margin-left: auto; color: var(--quiet); font-size: 9px; }
+    .two-column { display: grid; grid-template-columns: minmax(0,1.24fr) minmax(360px,.76fr); gap: 16px; margin-bottom: 16px; }
+    .b0-summary { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; margin: 18px 22px 0; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .z-value { font-size: 36px; font-weight: 650; line-height: 1; letter-spacing: -.055em; }
+    .z-meta strong, .week-meta strong { display: block; font-size: 13px; }
+    .z-meta small, .week-meta small { color: var(--muted); font-size: 10px; }
+    .week-meta { text-align: right; }
+    .allocation-list { padding: 18px 22px 20px; }
+    .allocation-row + .allocation-row { margin-top: 15px; }
+    .allocation-label { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; font-size: 12px; }
+    .allocation-label span { color: var(--muted); }
+    .allocation-label strong { font-size: 13px; }
+    .bar-track { position: relative; height: 9px; border-radius: 999px; background: #edf1ed; }
+    .bar-fill { position: absolute; inset: 0 auto 0 0; min-width: 2px; border-radius: inherit; background: var(--green); }
+    .bar-marker { position: absolute; top: -3px; width: 2px; height: 15px; border-radius: 2px; background: var(--amber); }
+    .allocation-foot { display: flex; justify-content: space-between; gap: 10px; margin-top: 16px; padding-top: 13px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; }
+    .account-panel { margin-bottom: 16px; }
+    .account-status { display: inline-flex; padding: 6px 10px; border-radius: 999px; color: var(--amber); background: #fbf0df; font-size: 10px; font-weight: 750; white-space: nowrap; }
+    .account-summary { display: grid; grid-template-columns: repeat(4,1fr); margin: 18px 22px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .account-metric { min-width: 0; padding: 14px 16px; }
+    .account-metric:first-child { padding-left: 0; }
+    .account-metric + .account-metric { border-left: 1px solid var(--line); }
+    .account-metric span { display: block; margin-bottom: 3px; color: var(--muted); font-size: 10px; }
+    .account-metric strong { display: block; font-size: 21px; font-weight: 650; letter-spacing: -.03em; }
+    .account-table-wrap { overflow-x: auto; padding: 16px 22px 20px; }
+    .account-table { width: 100%; min-width: 790px; border-collapse: collapse; font-size: 12px; }
+    .account-table th { padding: 0 12px 9px; color: var(--quiet); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-align: right; text-transform: uppercase; }
+    .account-table th:first-child, .account-table td:first-child { padding-left: 0; text-align: left; }
+    .account-table td { padding: 11px 12px; border-top: 1px solid var(--line); text-align: right; vertical-align: middle; }
+    .account-table td strong, .account-table td small { display: block; }
+    .account-table td small { color: var(--muted); font-size: 9px; }
+    .deviation-negative { color: var(--blue); } .deviation-positive { color: var(--amber); }
+    .trade-buy { color: var(--green); } .trade-sell { color: var(--red); } .trade-hold { color: var(--quiet); }
+    .account-note { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0 0; color: var(--muted); font-size: 10px; }
+    .trigger-panel { margin-bottom: 16px; }
+    .trigger-list { display: grid; grid-template-columns: repeat(3,1fr); padding: 18px 22px 22px; }
+    .trigger { min-width: 0; padding: 2px 20px; }
+    .trigger:first-child { padding-left: 0; }
+    .trigger + .trigger { border-left: 1px solid var(--line); }
+    .trigger-top { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 9px; }
+    .trigger-top strong { font-size: 13px; }
+    .trigger-top span { color: var(--muted); font-family: var(--mono); font-size: 10px; }
+    .trigger-value { margin-bottom: 7px; font-size: 22px; font-weight: 650; letter-spacing: -.035em; }
+    .trigger p { margin-bottom: 0; color: var(--muted); font-size: 11px; }
+    .progress { height: 5px; margin: 9px 0; overflow: hidden; border-radius: 999px; background: #edf1ed; }
+    .progress span { display: block; height: 100%; border-radius: inherit; background: var(--blue); }
+    details { border: 1px solid var(--line); border-radius: 14px; color: var(--muted); background: rgba(255,255,255,.46); }
+    summary { display: flex; justify-content: space-between; gap: 12px; padding: 14px 16px; cursor: pointer; color: var(--ink); font-size: 12px; font-weight: 650; }
+    summary::after { content: "+"; color: var(--muted); } details[open] summary::after { content: "−"; }
+    .evidence-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; padding: 0 16px 15px; border-top: 1px solid var(--line); }
+    .evidence-item { min-width: 0; padding-top: 13px; }
+    .evidence-item span { display: block; margin-bottom: 4px; font-size: 10px; }
+    .evidence-item code { display: block; overflow: hidden; color: var(--ink); font-family: var(--mono); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .refresh-command { grid-column: 1/-1; padding: 12px; border-radius: 9px; color: var(--ink); background: #eef2ee; font-family: var(--mono); font-size: 10px; overflow-wrap: anywhere; }
+    .runner-setup { grid-column: 1/-1; display: flex; justify-content: space-between; gap: 18px; align-items: center; margin-top: 2px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255,255,255,.72); }
+    .runner-copy { min-width: 0; }
+    .runner-copy span { display: block; margin-bottom: 3px; color: var(--quiet); font-size: 9px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
+    .runner-copy strong { display: flex; align-items: center; gap: 7px; color: var(--ink); font-size: 12px; }
+    .runner-copy strong::before { content: ""; width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: var(--quiet); box-shadow: 0 0 0 4px rgba(138,148,142,.1); }
+    .runner-copy strong.is-online::before { background: var(--green); box-shadow: 0 0 0 4px rgba(23,107,82,.1); }
+    .runner-copy strong.is-offline::before { background: var(--amber); box-shadow: 0 0 0 4px rgba(169,102,31,.1); }
+    .runner-copy small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
+    .runner-download { flex: 0 0 auto; padding: 8px 11px; border: 1px solid rgba(23,107,82,.25); border-radius: 9px; color: var(--green); background: #fff; cursor: pointer; font-size: 10px; font-weight: 750; }
+    .runner-download:hover { border-color: rgba(23,107,82,.48); }
+    .runner-download:disabled { cursor: wait; opacity: .62; }
+    .page-foot { margin-top: 14px; color: var(--quiet); font-size: 10px; text-align: right; }
+    @media (max-width: 900px) {
+      .decision-strip { grid-template-columns: 1fr; } .decision-side { border-top: 1px solid rgba(255,255,255,.13); border-left: 0; }
+      .two-column { grid-template-columns: 1fr; } .trigger-list { grid-template-columns: 1fr; }
+      .account-summary { grid-template-columns: 1fr 1fr; }
+      .account-metric:nth-child(3) { border-top: 1px solid var(--line); border-left: 0; }
+      .account-metric:nth-child(4) { border-top: 1px solid var(--line); }
+      .trigger { padding: 15px 0; } .trigger:first-child { padding-top: 0; } .trigger + .trigger { border-top: 1px solid var(--line); border-left: 0; }
+    }
+    @media (max-width: 660px) {
+      .page { width: min(100% - 24px,1240px); padding-top: 20px; } .masthead { grid-template-columns: 1fr; gap: 16px; align-items: start; }
+      .freshness { width: 100%; min-width: 0; text-align: left; } .freshness-line { justify-content: flex-start; }
+      .decision-main { padding: 20px; } .decision-stat { padding: 16px; } .panel-head { display: block; padding: 18px 18px 0; }
+      .horizon-tabs { margin-top: 13px; } .metric-row { grid-template-columns: 1fr 1fr; margin: 17px 18px 0; }
+      .metric { padding: 12px; } .metric:first-child { padding-left: 12px; } .metric:nth-child(3) { border-top: 1px solid var(--line); border-left: 0; }
+      .metric:nth-child(4) { border-top: 1px solid var(--line); } .metric strong { font-size: 21px; }
+      .series-controls { margin-right: 18px; margin-left: 18px; } .series-hint { width: 100%; margin-left: 0; }
+      .chart-wrap { padding: 14px 8px 12px; }
+      .b0-summary { grid-template-columns: auto 1fr; margin: 16px 18px 0; } .week-meta { grid-column: 1/-1; text-align: left; }
+      .allocation-list, .trigger-list { padding-right: 18px; padding-left: 18px; } .evidence-grid { grid-template-columns: 1fr; }
+      .account-summary { margin-right: 18px; margin-left: 18px; } .account-metric { padding: 12px; } .account-metric:first-child { padding-left: 12px; }
+      .account-table-wrap { padding-right: 18px; padding-left: 18px; overflow: visible; }
+      .account-table { min-width: 0; } .account-table thead { display: none; } .account-table tbody { display: block; }
+      .account-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+      .account-table td { display: block; padding: 8px 0 0; border: 0; text-align: left; }
+      .account-table td:first-child { grid-column: 1/-1; padding: 0 0 7px; border-bottom: 1px dashed var(--line); }
+      .account-table td:not(:first-child)::before { content: attr(data-label); display: block; margin-bottom: 2px; color: var(--quiet); font-size: 8px; letter-spacing: .06em; }
+      .account-note { display: block; } .account-note span { display: block; } .account-note span + span { margin-top: 5px; }
+      .runner-setup { grid-column: auto; display: block; } .runner-download { width: 100%; margin-top: 11px; }
+      .refresh-command { grid-column: auto; } .page-foot { text-align: left; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .refresh-button { transition: none; }
+      .refresh-button.is-loading .refresh-icon { animation-duration: 1.6s; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="masthead">
+      <div><div class="kicker">Production Strategy Monitor</div><h1>策略监控工作台</h1><p class="subtitle">用一套固定结构连续回答：策略走过怎样的路径、当前处于什么状态、哪些条件可能触发下一次变化。</p></div>
+      <div class="freshness">
+        <div class="freshness-head">
+          <div class="freshness-line"><span class="dot"></span><span id="freshness-status">正在核验</span></div>
+          <button class="refresh-button" id="manual-refresh" type="button" title="仅重新加载已发布的数据，不触发 Mac 计算" aria-label="重新加载已发布数据">
+            <svg class="refresh-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span id="manual-refresh-label">重新加载</span>
+          </button>
+        </div>
+        <strong id="data-end">—</strong>
+        <small id="freshness-detail">T+1 · 最近完成交易日</small>
+        <small class="refresh-feedback" id="refresh-feedback" aria-live="polite"></small>
+      </div>
+    </header>
+    <div class="fatal" id="fatal" hidden></div>
+
+    <section class="decision-strip" aria-labelledby="decision-title">
+      <div class="decision-main"><div class="eyebrow">当前策略结论</div><h2 id="decision-title">载入中</h2><div class="account-chip" id="account-chip" hidden>账户层载入中</div><p id="decision-copy">正在读取经过权威校验的生产快照。</p></div>
+      <div class="decision-side">
+        <div class="decision-stat"><span>模型指数</span><strong id="model-index">—</strong><small id="index-basis">起点 = 100</small></div>
+        <div class="decision-stat"><span>B0 状态</span><strong id="b0-state">—</strong><small id="b0-state-detail">—</small></div>
+      </div>
+    </section>
+
+    <section class="panel performance-panel" aria-labelledby="performance-title">
+      <div class="panel-head">
+        <div><div class="eyebrow">路径与代价</div><h2 id="performance-title">模型净值与回撤</h2><p>净值统一归一到区间起点 100；可按需叠加底层资产，纵轴随当前展示自动缩放。</p></div>
+        <div class="horizon-tabs" role="group" aria-label="净值区间"><button type="button" data-horizon="1Y">1 年</button><button type="button" class="active" data-horizon="3Y">3 年</button><button type="button" data-horizon="ALL">全部</button></div>
+      </div>
+      <div class="metric-row">
+        <div class="metric"><span>区间收益</span><strong id="period-return">—</strong><small id="period-range">—</small></div>
+        <div class="metric"><span>最大回撤</span><strong class="negative" id="max-drawdown">—</strong><small id="drawdown-range">—</small></div>
+        <div class="metric"><span>当前回撤</span><strong id="current-drawdown">—</strong><small>相对区间内前高</small></div>
+        <div class="metric"><span>当前模型指数</span><strong id="range-index">—</strong><small>区间起点 = 100</small></div>
+      </div>
+      <div class="series-controls" id="series-controls"><span class="series-controls-label">叠加底层资产</span><div class="asset-toggles" id="asset-toggles"></div><span class="series-hint">上方实线为净值 · 下方虚线为回撤 · 默认隐藏</span></div>
+      <div class="chart-wrap"><div class="chart-legend"><span class="legend-item"><span class="legend-line"></span>模型净值</span><span class="legend-item"><span class="legend-area"></span>回撤</span></div><svg id="performance-chart" viewBox="0 0 1000 390" role="img" aria-label="模型净值与回撤曲线"></svg></div>
+    </section>
+
+    <div class="two-column">
+      <section class="panel" aria-labelledby="b0-title">
+        <div class="panel-head"><div><div class="eyebrow">风格温度</div><h2 id="b0-title">B0 Z 值轨迹</h2><p>仅使用周度观测；±2 为入场阈值，0 轴与 8 周为离场条件。</p></div><code>52W</code></div>
+        <div class="b0-summary"><strong class="z-value" id="latest-z">—</strong><div class="z-meta"><strong id="z-change">—</strong><small>较上周变化</small></div><div class="week-meta"><strong id="holding-weeks">—</strong><small>当前 B0 episode</small></div></div>
+        <div class="chart-wrap"><svg id="b0-chart" viewBox="0 0 760 300" role="img" aria-label="B0 Z 值周度曲线"></svg></div>
+      </section>
+      <section class="panel" aria-labelledby="allocation-title">
+        <div class="panel-head"><div><div class="eyebrow">当前位置</div><h2 id="allocation-title">模型仓位</h2><p>绿色为当前模型权重；橙线为周度理想权重，未必触发调仓。</p></div><code id="allocation-total">—</code></div>
+        <div class="allocation-list" id="allocation-list"></div>
+      </section>
+    </div>
+
+    <section class="panel account-panel" id="account-panel" aria-labelledby="account-title" hidden>
+      <div class="panel-head"><div><div class="eyebrow">账户叠加层</div><h2 id="account-title">华宝实际持仓对齐</h2><p>实际账户只展示金额、权重与模型偏差，不生成调仓计划。</p></div><span class="account-status" id="account-status">—</span></div>
+      <div class="account-summary">
+        <div class="account-metric"><span>总资产</span><strong id="account-total">—</strong></div>
+        <div class="account-metric"><span>现金</span><strong id="account-cash">—</strong></div>
+        <div class="account-metric"><span>最大偏差</span><strong id="account-deviation">—</strong></div>
+        <div class="account-metric"><span>持仓日期</span><strong id="account-date">—</strong></div>
+      </div>
+      <div class="account-table-wrap">
+        <table class="account-table">
+          <thead><tr><th>资产 / ETF</th><th>华宝实际</th><th>策略模型</th><th>权重偏差</th><th>账户计划</th></tr></thead>
+          <tbody id="account-rows"></tbody>
+        </table>
+        <div class="account-note"><span id="account-note">—</span><span id="account-plan-id">—</span></div>
+      </div>
+    </section>
+
+    <section class="panel trigger-panel" aria-labelledby="trigger-title">
+      <div class="panel-head"><div><div class="eyebrow">变化监测</div><h2 id="trigger-title">下一次变化要看什么</h2><p>这里展示触发条件的距离，不把短期轨迹包装成预测。</p></div></div>
+      <div class="trigger-list">
+        <article class="trigger"><div class="trigger-top"><strong>基础仓再平衡</strong><span>5% gate</span></div><div class="trigger-value" id="base-gate-value">—</div><div class="progress"><span id="base-gate-progress"></span></div><p id="base-gate-copy">—</p></article>
+        <article class="trigger"><div class="trigger-top"><strong>B0 离场窗口</strong><span>0 / 8W</span></div><div class="trigger-value" id="b0-exit-value">—</div><div class="progress"><span id="b0-exit-progress"></span></div><p id="b0-exit-copy">—</p></article>
+        <article class="trigger"><div class="trigger-top"><strong>数据与执行</strong><span>T+1</span></div><div class="trigger-value" id="data-gate-value">—</div><div class="progress"><span id="data-gate-progress"></span></div><p id="data-gate-copy">—</p></article>
+      </div>
+    </section>
+
+    <details><summary>低频证据与刷新设置</summary><div class="evidence-grid">
+      <div class="evidence-item"><span>运行框架</span><code id="framework">—</code></div><div class="evidence-item"><span>Production run</span><code id="run-id">—</code></div><div class="evidence-item"><span>Reference run</span><code id="reference-run-id">—</code></div>
+      <div class="evidence-item"><span>更新方式</span><code>Mac 每日 08:00（Asia/Singapore）计算后发布；页面不触发计算</code></div>
+    </div></details>
+    <footer class="page-foot" id="page-foot">模型监控与已确认账户叠加；不展示实际账户净值曲线。</footer>
+  </main>
+
+  <script src="freshness.js"></script>
+  <script>
+    (() => {
+      const fatal = document.getElementById("fatal");
+      const $ = (id) => document.getElementById(id);
+      const set = (id, value) => { $(id).textContent = value; };
+      const pct = (value, digits = 2) => `${Number(value).toFixed(digits)}%`;
+      const signed = (value, suffix = "") => `${Number(value) >= 0 ? "+" : ""}${Number(value).toFixed(2)}${suffix}`;
+      const money = (value) => `¥${Number(value).toLocaleString("zh-CN", {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+      const stateNames = { growth: "成长", value: "价值", neutral: "中性" };
+      const actionNames = { HOLD: "继续持有", TRADE: "需要调仓", BUY: "买入", SELL: "卖出" };
+      const assetColors = { cni_growth: "#3f6aa5", cni_value: "#c26d3a", nasdaq: "#7356a8", china_bond_composite: "#607d8b", gold: "#a48728" };
+      const esc = (value) => String(value).replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);
+      let calendar;
+      const renderDashboard = (data) => {
+        fatal.hidden = true;
+        fatal.textContent = "";
+        $("account-panel").hidden = true;
+        if (!data) { fatal.hidden = false; fatal.textContent = "尚无可用的已发布快照。"; return; }
+
+      const freshness = window.assessFreshness(data, calendar);
+      const isFresh = freshness.isFresh;
+      set("freshness-status", isFresh ? "模型与持仓已更新" : "历史数据 · 待更新");
+      document.querySelector(".freshness-line").style.color = isFresh ? "var(--green)" : "var(--amber)";
+      set("data-end", data.freshness.data_end);
+      set("freshness-detail", freshness.required ? `T+1 · 最近完成交易日 ${freshness.required}` : "交易日历已过期，无法确认新鲜度");
+      if (!isFresh) { fatal.hidden = false; fatal.textContent = "当前快照未通过 T+1 或权威门禁，页面内容不可作为生产判断依据。"; }
+      const action = actionNames[data.summary.strategy_action] || data.summary.strategy_action;
+      const b0State = stateNames[data.summary.b0_state] || data.summary.b0_state;
+      const modelOnly = data.visibility === "model_only";
+      const accountAvailable = !modelOnly && data.account && ["current","stale"].includes(data.account.status);
+      const accountCurrent = data.account && data.account.status === "current" && data.account.valuation_date === data.freshness.data_end;
+      const observedOnly = data.account?.confirmation_status === "unconfirmed";
+      const hasAccountPlan = accountCurrent && !observedOnly && Boolean(data.account?.plan_id);
+      set("decision-title", `${action} · B0 偏${b0State}`);
+      $("account-chip").hidden=modelOnly;
+      if (!modelOnly) set("account-chip",observedOnly?`账户层：网页读取 ${data.account.valuation_date} · 待确认`:hasAccountPlan?(data.account.account_action==="TRADE"?"账户层：需要调仓，尚未执行":"账户层：当前已对齐"):accountAvailable?`账户层：最近确认 ${data.account.valuation_date}`:"账户层：待确认");
+      set("decision-copy", modelOnly
+        ? `数据截至 ${data.freshness.data_end}；策略信号已通过权威校验。上次模型交易为 ${data.triggers.last_trade.date || "暂无"}，当前重点观察 Z 值与持有期限。`
+        : accountCurrent
+        ? `数据截至 ${data.freshness.data_end}；策略与账户分层展示。上次模型交易为 ${data.triggers.last_trade.date || "暂无"}，当前重点观察 Z 值、持有期限与账户偏差。`
+        : accountAvailable
+        ? `模型数据截至 ${data.freshness.data_end}；华宝持仓最近确认于 ${data.account.valuation_date}，当前仅展示实际持仓与模型偏差，不生成新的调仓计划。`
+        : `数据截至 ${data.freshness.data_end}；策略信号已更新，华宝账户层尚未按同日确认。上次模型交易为 ${data.triggers.last_trade.date || "暂无"}，当前重点观察 Z 值与持有期限。`);
+      set("model-index", data.summary.model_index.toFixed(2)); set("index-basis", data.performance.basis); set("b0-state", b0State); set("b0-state-detail", `${data.summary.b0_held_weeks} / ${data.summary.max_hold_weeks} 周`);
+
+      const linePath = (points, x, y) => points.map((point, index) => `${index ? "L" : "M"}${x(point,index).toFixed(2)},${y(point,index).toFixed(2)}`).join(" ");
+      const performanceAssets = data.performance.assets || {};
+      const activeAssets = new Set([...document.querySelectorAll("[data-asset].active")].map(button => button.dataset.asset).filter(asset => performanceAssets[asset]));
+      let activeHorizon = document.querySelector("[data-horizon].active")?.dataset.horizon || "3Y";
+      $("series-controls").hidden = !Object.keys(performanceAssets).length;
+      $("asset-toggles").innerHTML = Object.entries(performanceAssets).map(([asset, metadata]) => {
+        const color = assetColors[asset] || "#607d8b";
+        return `<button type="button" class="series-toggle${activeAssets.has(asset)?" active":""}" data-asset="${esc(asset)}" aria-pressed="${activeAssets.has(asset)}" style="--series-color:${color}" title="显示或隐藏 ${esc(metadata.label)} 的净值与回撤"><span class="series-dot"></span>${esc(metadata.label)}</button>`;
+      }).join("");
+      function renderPerformance(horizon) {
+        const w = data.performance.horizons[horizon], points = w.points, last = points.at(-1);
+        set("period-return", pct(w.return_pct)); set("period-range", `${w.start_date} → ${w.end_date}`); set("max-drawdown", pct(w.max_drawdown_pct));
+        set("drawdown-range", `${w.max_drawdown_peak_date} → ${w.max_drawdown_trough_date}`); set("current-drawdown", pct(w.current_drawdown_pct)); set("range-index", Number(last.index).toFixed(2));
+        const visibleAssets = Object.keys(performanceAssets).filter(asset => activeAssets.has(asset));
+        const assetWindows = visibleAssets.map(asset => ({ asset, points: performanceAssets[asset].horizons[horizon].points }));
+        const W=1000,L=68,R=22,T=20,NB=238,DT=278,DB=352;
+        const values=[...points.map(p=>Number(p.index)),...assetWindows.flatMap(series=>series.points.map(p=>Number(p.index)))];
+        const drawdowns=[...points.map(p=>Number(p.drawdown_pct)),...assetWindows.flatMap(series=>series.points.map(p=>Number(p.drawdown_pct)))];
+        const lo=Math.min(...values), hi=Math.max(...values), pad=Math.max((hi-lo)*.08,1), nlo=lo-pad, nhi=hi+pad, minDD=Math.min(...drawdowns,-1);
+        const x=(_p,i)=>L+i/Math.max(points.length-1,1)*(W-L-R), yNav=p=>NB-(Number(p.index)-nlo)/(nhi-nlo)*(NB-T), yDD=p=>DT+Number(p.drawdown_pct)/minDD*(DB-DT);
+        const nav=linePath(points,x,yNav), dd=linePath(points,x,yDD), area=`${dd} L${x(last,points.length-1)},${DT} L${x(points[0],0)},${DT} Z`;
+        const navDigits=(nhi-nlo)<10?1:0;
+        const yTicks=[0,.33,.66,1].map(r=>{const v=nhi-r*(nhi-nlo),y=T+r*(NB-T);return `<line x1="${L}" y1="${y}" x2="${W-R}" y2="${y}" stroke="#e5eae5"/><text x="${L-12}" y="${y+4}" text-anchor="end" fill="#7b877f" font-size="11">${v.toFixed(navDigits)}</text>`}).join("");
+        const ids=[0,Math.floor((points.length-1)/2),points.length-1], xTicks=ids.map(i=>`<text x="${x(points[i],i)}" y="382" text-anchor="${i===0?"start":i===points.length-1?"end":"middle"}" fill="#7b877f" font-size="11">${esc(points[i].date)}</text>`).join("");
+        const assetDrawdowns=assetWindows.map(series=>`<path d="${linePath(series.points,x,yDD)}" fill="none" stroke="${assetColors[series.asset]}" stroke-width="1.45" stroke-dasharray="5 4" opacity=".78"/>`).join("");
+        const assetNavs=assetWindows.map(series=>`<path d="${linePath(series.points,x,yNav)}" fill="none" stroke="${assetColors[series.asset]}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity=".84"/>`).join("");
+        $("performance-chart").innerHTML=`${yTicks}<line x1="${L}" y1="${DT}" x2="${W-R}" y2="${DT}" stroke="#dfe5df"/><path d="${area}" fill="rgba(164,69,60,.16)"/>${assetDrawdowns}<path d="${dd}" fill="none" stroke="#a4453c" stroke-width="1.5"/>${assetNavs}<path d="${nav}" fill="none" stroke="#176b52" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${x(last,points.length-1)}" cy="${yNav(last)}" r="4.5" fill="#176b52" stroke="#fff" stroke-width="2"/><text x="${L-12}" y="${DT+4}" text-anchor="end" fill="#7b877f" font-size="11">0%</text><text x="${L-12}" y="${DB+4}" text-anchor="end" fill="#a4453c" font-size="11">${minDD.toFixed(0)}%</text>${xTicks}`;
+        $("performance-chart").setAttribute("aria-label", visibleAssets.length ? `模型及已选 ${visibleAssets.map(asset=>performanceAssets[asset].label).join("、")} 的净值与回撤曲线` : "模型净值与回撤曲线");
+      }
+      document.querySelectorAll("[data-horizon]").forEach(button=>{button.onclick=()=>{document.querySelectorAll("[data-horizon]").forEach(item=>item.classList.remove("active"));button.classList.add("active");activeHorizon=button.dataset.horizon;renderPerformance(activeHorizon)}});
+      document.querySelectorAll("[data-asset]").forEach(button=>{button.onclick=()=>{const asset=button.dataset.asset;if(activeAssets.has(asset)){activeAssets.delete(asset)}else{activeAssets.add(asset)}button.classList.toggle("active",activeAssets.has(asset));button.setAttribute("aria-pressed",String(activeAssets.has(asset)));renderPerformance(activeHorizon)}});
+      renderPerformance(activeHorizon);
+
+      const latestZ=data.b0.latest_z; set("latest-z",latestZ.toFixed(2)); set("z-change",`${signed(data.b0.change,"σ")} · ${data.b0.change>=0?"向 0 轴回升":"向负向扩张"}`); set("holding-weeks",`已持有 ${data.b0.held_weeks} / ${data.b0.max_hold_weeks} 周`);
+      function renderB0() {
+        const points=data.b0.series,W=760,L=48,R=18,T=18,B=266, vals=points.map(p=>Number(p.z)),lo=Math.min(-2.5,...vals)-.2,hi=Math.max(2.5,...vals)+.2;
+        const x=(_p,i)=>L+i/Math.max(points.length-1,1)*(W-L-R),y=p=>T+(hi-Number(p.z))/(hi-lo)*(B-T),yv=v=>T+(hi-v)/(hi-lo)*(B-T),path=linePath(points,x,y);
+        const levels=[{v:2,l:"+2 价值入场",c:"#a9661f"},{v:0,l:"0 离场",c:"#8a948e"},{v:-2,l:"−2 成长入场",c:"#39758c"}].map(o=>`<line x1="${L}" y1="${yv(o.v)}" x2="${W-R}" y2="${yv(o.v)}" stroke="${o.c}" stroke-dasharray="5 5"/><text x="${L+5}" y="${yv(o.v)-6}" fill="${o.c}" font-size="10">${o.l}</text>`).join("");
+        const last=points.at(-1),ids=[0,Math.floor((points.length-1)/2),points.length-1],dates=ids.map(i=>`<text x="${x(points[i],i)}" y="292" text-anchor="${i===0?"start":i===points.length-1?"end":"middle"}" fill="#7b877f" font-size="10">${esc(points[i].date)}</text>`).join("");
+        $("b0-chart").innerHTML=`<rect x="${L}" y="${yv(2)}" width="${W-L-R}" height="${yv(-2)-yv(2)}" fill="#f8faf7"/>${levels}<path d="${path}" fill="none" stroke="#176b52" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${x(last,points.length-1)}" cy="${y(last)}" r="5" fill="#176b52" stroke="#fff" stroke-width="2"/><text x="${x(last,points.length-1)-8}" y="${y(last)-11}" text-anchor="end" fill="#176b52" font-size="11" font-weight="700">${latestZ.toFixed(2)}</text>${dates}`;
+      } renderB0();
+
+      $("allocation-list").innerHTML=data.allocation.items.map(item=>{const width=Math.max(0,Math.min(item.weight_pct,100)),marker=Math.max(0,Math.min(item.weekly_target_pct,100)),drift=Math.abs(item.drift_pp)<.005?"持平":signed(item.drift_pp,"pp");return `<div class="allocation-row"><div class="allocation-label"><span>${esc(item.label)} · ${drift}</span><strong>${pct(item.weight_pct)}</strong></div><div class="bar-track"><span class="bar-fill" style="width:${width}%"></span><span class="bar-marker" style="left:calc(${marker}% - 1px)" title="周度理想权重 ${pct(item.weekly_target_pct)}"></span></div></div>`}).join("")+`<div class="allocation-foot"><span>橙线：周度理想权重（未必调仓）</span><span>合计 ${pct(data.allocation.total_pct)}</span></div>`; set("allocation-total",`${pct(data.allocation.total_pct)} TOTAL`);
+
+      if (accountAvailable) {
+        $("account-panel").hidden=false;
+        set("account-status",observedOnly?"网页读取 · 仅供监控":hasAccountPlan?(data.account.account_action==="TRADE"?"需要调仓 · 尚未执行":"当前无需操作"):accountCurrent?"同日持仓 · 无调仓计划":"非同日 · 仅供对照");
+        set("account-total",money(data.account.total_value)); set("account-cash",`${money(data.account.cash_amount)} · ${pct(data.account.cash_weight_pct)}`);
+        set("account-deviation",pct(data.account.max_abs_deviation_pct)); set("account-date",accountCurrent?data.account.valuation_date:`${data.account.valuation_date} · 模型 ${data.freshness.data_end}`);
+        const actionLabel={BUY:"买入",SELL:"卖出",HOLD:"不操作"}, actionClass={BUY:"trade-buy",SELL:"trade-sell",HOLD:"trade-hold"};
+        $("account-rows").innerHTML=data.account.rows.map(row=>`<tr><td><strong>${esc(row.label)}</strong><small>${esc(row.etf_name)}</small></td><td data-label="华宝实际"><strong>${money(row.actual_amount)}</strong><small>${pct(row.actual_weight_pct)}</small></td><td data-label="策略模型"><strong>${money(row.model_amount)}</strong><small>${pct(row.model_weight_pct)}</small></td><td data-label="权重偏差" class="${row.deviation_pp<0?"deviation-negative":row.deviation_pp>0?"deviation-positive":""}"><strong>${signed(row.deviation_pp,"pp")}</strong><small>实际 − 模型</small></td><td data-label="账户计划" class="${row.action?actionClass[row.action]:"trade-hold"}">${row.action?`<strong>${actionLabel[row.action]}${row.action==="HOLD"?"":` ${money(Math.abs(row.trade_amount))}`}</strong><small>目标 ${money(row.plan_target_amount)}</small>`:`<strong>—</strong><small>未生成调仓计划</small>`}</td></tr>`).join("");
+        set("account-note",observedOnly?`网页估值 ${data.account.valuation_date}；读取于 ${data.account.observed_at}；源持仓上传于 ${data.account.source_uploaded_at || "未知"}。仅供监控，未经账户确认，无调仓计划。`:hasAccountPlan?(data.account.account_action==="TRADE"?`计划净买入 ${money(data.account.net_trade_amount)}，使用现有现金；尚未执行。`:"账户仓位处于满足状态。"):`仅展示 ${data.account.valuation_date} 最近确认持仓；未据此生成 ${data.freshness.data_end} 调仓计划。`);
+        set("account-plan-id",data.account.plan_id?`plan ${data.account.plan_id}`:`snapshot ${data.account.snapshot_id}`);
+      }
+      const base=data.triggers.base_rebalance; set("base-gate-value",`${pct(base.value_pct)} / ${pct(base.threshold_pct)}`); $("base-gate-progress").style.width=`${Math.min(base.value_pct/base.threshold_pct*100,100)}%`; set("base-gate-copy",base.distance_pp>0?`距触发还差 ${base.distance_pp.toFixed(2)} 个百分点。`:"已达到门槛，需以策略正式决策为准。");
+      const bt=data.triggers.b0_time_exit; set("b0-exit-value",`${bt.held_weeks} / ${bt.max_hold_weeks} 周`); $("b0-exit-progress").style.width=`${Math.min(bt.held_weeks/bt.max_hold_weeks*100,100)}%`; set("b0-exit-copy",`当前 Z=${latestZ.toFixed(2)}；若未先穿越 0 轴，最迟还剩 ${bt.remaining_weeks} 周。`);
+      const accountPending=accountCurrent&&data.account.account_action==="TRADE"&&data.account.plan_status==="pending";
+      set("data-gate-value",!isFresh?"已阻断":modelOnly?"已更新":observedOnly?"持仓待确认":accountPending?"待执行":accountCurrent?"已就绪":accountAvailable?"持仓非同日":"账户待确认");
+      $("data-gate-progress").style.width=!isFresh?"0%":modelOnly?"100%":accountPending?"72%":accountCurrent?"100%":accountAvailable?"82%":"58%";
+      set("data-gate-copy",!isFresh?"数据日与要求交易日不一致。":modelOnly?`模型数据已更新至最近完成交易日：${data.freshness.data_end}。`:accountPending?`策略与华宝均截至 ${data.freshness.data_end}；账户计划尚未执行。`:accountCurrent?`策略与华宝均截至 ${data.freshness.data_end}，当前无待执行计划。`:accountAvailable?`模型 ${data.freshness.data_end}；华宝最近确认 ${data.account.valuation_date}，不据旧持仓生成新计划。`:`策略数据已更新至 ${data.freshness.data_end}；华宝持仓尚未按同日确认。`);
+      if (observedOnly) set("data-gate-copy",`模型与网页估值均截至 ${data.freshness.data_end}；持仓仅供监控，确认前不生成调仓计划。`);
+        set("framework",`${data.authority.framework} ${data.authority.framework_version} · rev${data.authority.revision}`); set("run-id",data.authority.run_id); set("reference-run-id",data.authority.reference_run_id); set("page-foot",modelOnly?`快照生成于 ${data.generated_at} · 仅展示经权威校验的模型监控数据；不包含实际账户金额。`:`快照生成于 ${data.generated_at} · 模型监控与已确认华宝持仓叠加；不展示实际账户净值曲线。`);
+      if (observedOnly) set("page-foot",`快照生成于 ${data.generated_at} · 正式模型与网页持仓观察分层展示；观察数据不构成执行记录。`);
+      };
+
+      let loading = false;
+      async function reload() {
+        if (loading) return;
+        loading = true;
+        const button = $("manual-refresh");
+        button.disabled = true;
+        button.classList.add("is-loading");
+        set("manual-refresh-label", "载入中");
+        try {
+          const stamp = Date.now();
+          const [snapshotResponse, calendarResponse] = await Promise.all([
+            fetch(`snapshot.json?v=${stamp}`, {cache:"no-store"}),
+            fetch(`calendar.json?v=${stamp}`, {cache:"no-store"})
+          ]);
+          if (!snapshotResponse.ok || !calendarResponse.ok) throw new Error("数据暂不可用");
+          const next = await snapshotResponse.json();
+          const nextCalendar = await calendarResponse.json();
+          if (next.authority?.status !== "passed" || !next.freshness?.data_end || !nextCalendar.closes?.length) throw new Error("数据验证失败");
+          calendar = nextCalendar;
+          window.STRATEGY_MONITOR_SNAPSHOT = next;
+          renderDashboard(next);
+          const state = window.assessFreshness(next, calendar);
+          if (!state.isFresh) {
+            fatal.hidden = false;
+            fatal.textContent = `历史快照：模型 ${next.freshness.data_end}，华宝估值 ${next.account?.valuation_date || "未知"}，读取于 ${next.account?.observed_at || "未知"}。仅供回顾，不作为当前生产操作依据。`;
+            set("decision-title", `历史状态 · ${actionNames[next.summary.strategy_action] || next.summary.strategy_action} · B0 偏${stateNames[next.summary.b0_state] || next.summary.b0_state}`);
+            set("decision-copy", "以下曲线和偏差对应标注日期；等待 Mac 完成新的持仓读取、正式计算和发布。");
+            set("data-gate-copy", state.required ? `应更新至 ${state.required}；持仓观察须在24小时内。现有快照保留供对照。` : "交易日历已过期，等待 Mac 发布新日历。");
+            set("account-status", "历史观察 · 未确认");
+          }
+          set("refresh-feedback", "已加载已发布版本；不会触发 Mac 计算");
+          set("page-foot", `快照生成于 ${next.generated_at} · 华宝为未确认监控观察，无调仓计划 · 本站无访问鉴权`);
+        } catch (error) {
+          set("refresh-feedback", `重新加载失败：${error.message}。未替换已显示数据。`);
+          if (!window.STRATEGY_MONITOR_SNAPSHOT) {
+            fatal.hidden = false;
+            fatal.textContent = "快照加载失败，请稍后重试。";
+          }
+        } finally {
+          loading = false;
+          button.disabled = false;
+          button.classList.remove("is-loading");
+          set("manual-refresh-label", "重新加载");
+        }
+      }
+      $("manual-refresh").addEventListener("click", reload);
+      reload();
+      setInterval(reload, 5 * 60 * 1000);
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) reload(); });
+    })();
+  </script>
+</body>
+</html>
