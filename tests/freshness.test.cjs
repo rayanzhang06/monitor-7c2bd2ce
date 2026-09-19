@@ -18,3 +18,10 @@ test('old captured freshness cannot keep a page green', () => {
 test('expired calendar cannot imply freshness', () => {
   assert.equal(assessFreshness(snapshot, calendar, new Date('2026-10-01T00:00:00Z')).isFresh, false);
 });
+test('T+1 deadline does not expire a successful morning update at market close', () => {
+  const morning = {...snapshot, freshness:{data_end:'2026-09-17'},account:{status:'current',valuation_date:'2026-09-17',observed_at:'2026-09-18T00:00:00Z'}};
+  const state = assessFreshness(morning, calendar, new Date('2026-09-18T07:01:00Z'));
+  assert.equal(state.modelOnSchedule, true);
+  assert.equal(state.modelFresh, false); // Production authority freshness is NOT relaxed.
+  assert.equal(state.modelOverdue, false);
+});

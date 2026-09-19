@@ -283,9 +283,9 @@
       const fatal = document.getElementById("fatal");
       const $ = (id) => document.getElementById(id);
       const set = (id, value) => { $(id).textContent = value; };
-      const pct = (value, digits = 2) => `${Number(value).toFixed(digits)}%`;
-      const signed = (value, suffix = "") => `${Number(value) >= 0 ? "+" : ""}${Number(value).toFixed(2)}${suffix}`;
-      const money = (value) => `¥${Number(value).toLocaleString("zh-CN", {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+      const pct = (value, digits = 2) => value == null ? "—" : `${Number(value).toFixed(digits)}%`;
+      const signed = (value, suffix = "") => value == null ? "—" : `${Number(value) >= 0 ? "+" : ""}${Number(value).toFixed(2)}${suffix}`;
+      const money = (value) => value == null ? "—" : `¥${Number(value).toLocaleString("zh-CN", {minimumFractionDigits:2, maximumFractionDigits:2})}`;
       const stateNames = { growth: "成长", value: "价值", neutral: "中性" };
       const actionNames = { HOLD: "继续持有", TRADE: "需要调仓", BUY: "买入", SELL: "卖出" };
       const assetColors = { cni_growth: "#3f6aa5", cni_value: "#c26d3a", nasdaq: "#7356a8", china_bond_composite: "#607d8b", gold: "#a48728" };
@@ -299,16 +299,15 @@
 
       const freshness = window.assessFreshness(data, calendar);
       const isFresh = freshness.isFresh;
-      set("freshness-status", isFresh ? "模型与持仓已更新" : "历史数据 · 待更新");
-      document.querySelector(".freshness-line").style.color = isFresh ? "var(--green)" : "var(--amber)";
+      set("freshness-status", freshness.modelOverdue ? "模型更新逾期" : freshness.modelFresh ? (freshness.accountFresh ? "模型与持仓已更新" : "模型已更新 · 持仓待更新") : freshness.modelOnSchedule ? "T+1 按期 · 待下次更新" : "历史数据 · 待更新");
+      document.querySelector(".freshness-line").style.color = freshness.modelOnSchedule ? "var(--green)" : "var(--amber)";
       set("data-end", data.freshness.data_end);
-      set("freshness-detail", freshness.required ? `T+1 · 最近完成交易日 ${freshness.required}` : "交易日历已过期，无法确认新鲜度");
-      if (!isFresh) { fatal.hidden = false; fatal.textContent = "当前快照未通过 T+1 或权威门禁，页面内容不可作为生产判断依据。"; }
+      set("freshness-detail", freshness.required ? `08:00 更新 · 08:30 时限 · 应完成 ${freshness.due || "待确认"}` : "交易日历已过期，无法确认新鲜度");
       const action = actionNames[data.summary.strategy_action] || data.summary.strategy_action;
       const b0State = stateNames[data.summary.b0_state] || data.summary.b0_state;
       const modelOnly = data.visibility === "model_only";
       const accountAvailable = !modelOnly && data.account && ["current","stale"].includes(data.account.status);
-      const accountCurrent = data.account && data.account.status === "current" && data.account.valuation_date === data.freshness.data_end;
+      const accountCurrent = freshness.accountFresh && data.account.valuation_date === data.freshness.data_end;
       const observedOnly = data.account?.confirmation_status === "unconfirmed";
       const hasAccountPlan = accountCurrent && !observedOnly && Boolean(data.account?.plan_id);
       set("decision-title", `${action} · B0 偏${b0State}`);
@@ -319,7 +318,7 @@
         : accountCurrent
         ? `数据截至 ${data.freshness.data_end}；策略与账户分层展示。上次模型交易为 ${data.triggers.last_trade.date || "暂无"}，当前重点观察 Z 值、持有期限与账户偏差。`
         : accountAvailable
-        ? `模型数据截至 ${data.freshness.data_end}；华宝持仓最近确认于 ${data.account.valuation_date}，当前仅展示实际持仓与模型偏差，不生成新的调仓计划。`
+        ? `模型数据截至 ${data.freshness.data_end}；华宝估值 ${data.account.valuation_date} 为历史观察，仅保留原始金额，暂停当前偏差判断。`
         : `数据截至 ${data.freshness.data_end}；策略信号已更新，华宝账户层尚未按同日确认。上次模型交易为 ${data.triggers.last_trade.date || "暂无"}，当前重点观察 Z 值与持有期限。`);
       set("model-index", data.summary.model_index.toFixed(2)); set("index-basis", data.performance.basis); set("b0-state", b0State); set("b0-state-detail", `${data.summary.b0_held_weeks} / ${data.summary.max_hold_weeks} 周`);
 
@@ -369,9 +368,9 @@
 
       if (accountAvailable) {
         $("account-panel").hidden=false;
-        set("account-status",observedOnly?"网页读取 · 仅供监控":hasAccountPlan?(data.account.account_action==="TRADE"?"需要调仓 · 尚未执行":"当前无需操作"):accountCurrent?"同日持仓 · 无调仓计划":"非同日 · 仅供对照");
+        set("account-status",accountCurrent?"同日观察 · 未确认":"历史观察 · 待更新");
         set("account-total",money(data.account.total_value)); set("account-cash",`${money(data.account.cash_amount)} · ${pct(data.account.cash_weight_pct)}`);
-        set("account-deviation",pct(data.account.max_abs_deviation_pct)); set("account-date",accountCurrent?data.account.valuation_date:`${data.account.valuation_date} · 模型 ${data.freshness.data_end}`);
+        set("account-deviation",accountCurrent?pct(data.account.max_abs_deviation_pct):"—"); set("account-date",accountCurrent?data.account.valuation_date:`${data.account.valuation_date} · 模型 ${data.freshness.data_end}`);
         const actionLabel={BUY:"买入",SELL:"卖出",HOLD:"不操作"}, actionClass={BUY:"trade-buy",SELL:"trade-sell",HOLD:"trade-hold"};
         $("account-rows").innerHTML=data.account.rows.map(row=>`<tr><td><strong>${esc(row.label)}</strong><small>${esc(row.etf_name)}</small></td><td data-label="华宝实际"><strong>${money(row.actual_amount)}</strong><small>${pct(row.actual_weight_pct)}</small></td><td data-label="策略模型"><strong>${money(row.model_amount)}</strong><small>${pct(row.model_weight_pct)}</small></td><td data-label="权重偏差" class="${row.deviation_pp<0?"deviation-negative":row.deviation_pp>0?"deviation-positive":""}"><strong>${signed(row.deviation_pp,"pp")}</strong><small>实际 − 模型</small></td><td data-label="账户计划" class="${row.action?actionClass[row.action]:"trade-hold"}">${row.action?`<strong>${actionLabel[row.action]}${row.action==="HOLD"?"":` ${money(Math.abs(row.trade_amount))}`}</strong><small>目标 ${money(row.plan_target_amount)}</small>`:`<strong>—</strong><small>未生成调仓计划</small>`}</td></tr>`).join("");
         set("account-note",observedOnly?`网页估值 ${data.account.valuation_date}；读取于 ${data.account.observed_at}；源持仓上传于 ${data.account.source_uploaded_at || "未知"}。仅供监控，未经账户确认，无调仓计划。`:hasAccountPlan?(data.account.account_action==="TRADE"?`计划净买入 ${money(data.account.net_trade_amount)}，使用现有现金；尚未执行。`:"账户仓位处于满足状态。"):`仅展示 ${data.account.valuation_date} 最近确认持仓；未据此生成 ${data.freshness.data_end} 调仓计划。`);
@@ -383,7 +382,9 @@
       set("data-gate-value",!isFresh?"已阻断":modelOnly?"已更新":observedOnly?"持仓待确认":accountPending?"待执行":accountCurrent?"已就绪":accountAvailable?"持仓非同日":"账户待确认");
       $("data-gate-progress").style.width=!isFresh?"0%":modelOnly?"100%":accountPending?"72%":accountCurrent?"100%":accountAvailable?"82%":"58%";
       set("data-gate-copy",!isFresh?"数据日与要求交易日不一致。":modelOnly?`模型数据已更新至最近完成交易日：${data.freshness.data_end}。`:accountPending?`策略与华宝均截至 ${data.freshness.data_end}；账户计划尚未执行。`:accountCurrent?`策略与华宝均截至 ${data.freshness.data_end}，当前无待执行计划。`:accountAvailable?`模型 ${data.freshness.data_end}；华宝最近确认 ${data.account.valuation_date}，不据旧持仓生成新计划。`:`策略数据已更新至 ${data.freshness.data_end}；华宝持仓尚未按同日确认。`);
-      if (observedOnly) set("data-gate-copy",`模型与网页估值均截至 ${data.freshness.data_end}；持仓仅供监控，确认前不生成调仓计划。`);
+      set("data-gate-value",freshness.modelOverdue?"模型逾期":freshness.modelFresh?"模型已更新":"待下次更新");
+      $("data-gate-progress").style.width=freshness.modelOnSchedule?"100%":"0%";
+      set("data-gate-copy",`模型 ${data.freshness.data_end}；${accountCurrent?"同日持仓仅供监控":data.account?`持仓 ${data.account.valuation_date} 待更新，暂停偏差判断`:"暂无持仓观察"}。无调仓计划。`);
         set("framework",`${data.authority.framework} ${data.authority.framework_version} · rev${data.authority.revision}`); set("run-id",data.authority.run_id); set("reference-run-id",data.authority.reference_run_id); set("page-foot",modelOnly?`快照生成于 ${data.generated_at} · 仅展示经权威校验的模型监控数据；不包含实际账户金额。`:`快照生成于 ${data.generated_at} · 模型监控与已确认华宝持仓叠加；不展示实际账户净值曲线。`);
       if (observedOnly) set("page-foot",`快照生成于 ${data.generated_at} · 正式模型与网页持仓观察分层展示；观察数据不构成执行记录。`);
       };
@@ -410,13 +411,17 @@
           window.STRATEGY_MONITOR_SNAPSHOT = next;
           renderDashboard(next);
           const state = window.assessFreshness(next, calendar);
-          if (!state.isFresh) {
+          if (!state.modelFresh) {
             fatal.hidden = false;
-            fatal.textContent = `历史快照：模型 ${next.freshness.data_end}，华宝估值 ${next.account?.valuation_date || "未知"}，读取于 ${next.account?.observed_at || "未知"}。仅供回顾，不作为当前生产操作依据。`;
+            fatal.textContent = state.modelOnSchedule ? `模型截至 ${next.freshness.data_end}，今日收盘数据待次日更新；不作为最新生产操作依据。` : `模型更新逾期：截至 ${next.freshness.data_end}，等待 Mac 完成正式计算和发布。`;
             set("decision-title", `历史状态 · ${actionNames[next.summary.strategy_action] || next.summary.strategy_action} · B0 偏${stateNames[next.summary.b0_state] || next.summary.b0_state}`);
-            set("decision-copy", "以下曲线和偏差对应标注日期；等待 Mac 完成新的持仓读取、正式计算和发布。");
-            set("data-gate-copy", state.required ? `应更新至 ${state.required}；持仓观察须在24小时内。现有快照保留供对照。` : "交易日历已过期，等待 Mac 发布新日历。");
-            set("account-status", "历史观察 · 未确认");
+            set("decision-copy", "以下模型曲线对应标注日期；持仓采集与模型更新独立运行。");
+          }
+          if (!state.accountFresh && next.account) {
+            document.querySelectorAll('#account-rows tr').forEach(row => {
+              row.children[2].innerHTML='<strong>—</strong><small>待同日观察</small>';
+              row.children[3].innerHTML='<strong>—</strong><small>暂停偏差判断</small>';
+            });
           }
           set("refresh-feedback", "已加载已发布版本；不会触发 Mac 计算");
           set("page-foot", `快照生成于 ${next.generated_at} · 华宝为未确认监控观察，无调仓计划 · 本站无访问鉴权`);

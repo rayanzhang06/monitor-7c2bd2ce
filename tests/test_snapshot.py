@@ -50,6 +50,23 @@ class PublicationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'overlay dates'):
             validator.validate(self.snapshot, self.calendar, self.now)
 
+    def test_current_model_accepts_explicit_stale_holdings_without_comparison(self):
+        self.snapshot['publication']['mode'] = 'daily'
+        self.snapshot['account']['status'] = 'stale'
+        self.snapshot['account']['max_abs_deviation_pct'] = None
+        for row in self.snapshot['account']['rows']:
+            row.update(model_amount=None, model_weight_pct=None, deviation_pp=None)
+        self.snapshot['account']['valuation_date'] = '2026-09-01'
+        self.now = datetime.fromisoformat(self.snapshot['freshness']['data_end']+'T08:00:00+00:00')
+        validator.validate(self.snapshot, self.calendar, self.now)
+
+    def test_model_only_publication_is_valid(self):
+        self.snapshot['publication']['mode'] = 'daily'
+        self.snapshot['account'] = None
+        self.snapshot['visibility'] = 'model_only'
+        self.now = datetime.fromisoformat(self.snapshot['freshness']['data_end']+'T08:00:00+00:00')
+        validator.validate(self.snapshot, self.calendar, self.now)
+
 
 if __name__ == '__main__':
     unittest.main()

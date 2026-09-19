@@ -26,20 +26,33 @@ def validate(snapshot, calendar, now=None):
     if freshness['data_end'] != freshness['required_session']:
         raise ValueError('snapshot did not pass original freshness gate')
     account = snapshot['account']
-    if account['confirmation_status'] != 'unconfirmed' or account['account_name'] != '华宝':
-        raise ValueError('unconfirmed Huabao monitor observation required')
-    if any(account.get(key) is not None for key in ('plan_id', 'plan_status', 'account_action', 'net_trade_amount')):
-        raise ValueError('account plan must not be published')
-    rows = account['rows']
-    if len(rows) != 5 or {row['asset'] for row in rows} != ASSETS:
-        raise ValueError('complete five-asset display required')
-    for row in rows:
-        if any(row.get(key) is not None for key in ('action', 'trade_amount', 'plan_target_amount')):
-            raise ValueError('trade plan in monitor row')
-    amounts = [float(row['actual_amount']) for row in rows] + [float(account['cash_amount']), float(account['non_strategy_amount'])]
-    total = float(account['total_value'])
-    if not math.isfinite(total) or total <= 0 or any(not math.isfinite(x) or x < 0 for x in amounts) or abs(sum(amounts)-total) > .02:
-        raise ValueError('inconsistent holdings')
+    if account is None:
+        if snapshot.get('visibility') != 'model_only':
+            raise ValueError('missing account must be model_only')
+    else:
+        if account['confirmation_status'] != 'unconfirmed' or account['account_name'] != '华宝':
+            raise ValueError('unconfirmed Huabao monitor observation required')
+        if account.get('status') not in ('current', 'stale'):
+            raise ValueError('account freshness status required')
+        if any(account.get(key) is not None for key in ('plan_id', 'plan_status', 'account_action', 'net_trade_amount')):
+            raise ValueError('account plan must not be published')
+        rows = account['rows']
+        if len(rows) != 5 or {row['asset'] for row in rows} != ASSETS:
+            raise ValueError('complete five-asset display required')
+        for row in rows:
+            if any(row.get(key) is not None for key in ('action', 'trade_amount', 'plan_target_amount')):
+                raise ValueError('trade plan in monitor row')
+        amounts = [float(row['actual_amount']) for row in rows] + [float(account['cash_amount']), float(account['non_strategy_amount'])]
+        total = float(account['total_value'])
+        if not math.isfinite(total) or total <= 0 or any(not math.isfinite(x) or x < 0 for x in amounts) or abs(sum(amounts)-total) > .02:
+            raise ValueError('inconsistent holdings')
+        if account['status'] == 'stale':
+            if not account.get('valuation_date') or not account.get('observed_at'):
+                raise ValueError('historical holding dates required')
+            if account.get('max_abs_deviation_pct') is not None or any(
+                row.get(key) is not None for row in rows for key in ('model_amount', 'model_weight_pct', 'deviation_pp')
+            ):
+                raise ValueError('stale holdings must not imply current comparison')
     if set(snapshot['performance']['assets']) != ASSETS:
         raise ValueError('missing overlay asset')
     for key, horizon in snapshot['performance']['horizons'].items():
@@ -59,9 +72,12 @@ def validate(snapshot, calendar, now=None):
         if not closes or now.date().isoformat() > calendar['valid_until']:
             raise ValueError('calendar unavailable')
         required = closes[-1]['date']
-        age = (now - datetime.fromisoformat(account['observed_at'])).total_seconds()
-        if freshness['data_end'] != required or account['valuation_date'] != required or not 0 <= age <= 86400:
+        if freshness['data_end'] != required:
             raise ValueError('daily snapshot is stale')
+        if account and account['status'] == 'current':
+            age = (now - datetime.fromisoformat(account['observed_at'])).total_seconds()
+            if account['valuation_date'] != required or not 0 <= age <= 86400:
+                raise ValueError('current holding is stale')
     return snapshot
 
 
