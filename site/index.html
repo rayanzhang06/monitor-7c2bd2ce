@@ -287,7 +287,7 @@
       const signed = (value, suffix = "") => value == null ? "—" : `${Number(value) >= 0 ? "+" : ""}${Number(value).toFixed(2)}${suffix}`;
       const money = (value) => value == null ? "—" : `¥${Number(value).toLocaleString("zh-CN", {minimumFractionDigits:2, maximumFractionDigits:2})}`;
       const stateNames = { growth: "成长", value: "价值", neutral: "中性" };
-      const actionNames = { HOLD: "继续持有", TRADE: "需要调仓", BUY: "买入", SELL: "卖出" };
+      const actionNames = { HOLD: "模型维持", TRADE: "模型目标调整", BUY: "买入", SELL: "卖出" };
       const assetColors = { cni_growth: "#3f6aa5", cni_value: "#c26d3a", nasdaq: "#7356a8", china_bond_composite: "#607d8b", gold: "#a48728" };
       const esc = (value) => String(value).replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);
       let calendar;
